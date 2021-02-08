@@ -1,0 +1,13 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "potential:lib"
+
+    - path: "./app/Main.hs"
+      component: "potential:exe:potential-exe"
+
+    - path: "./app/Paths_potential.hs"
+      component: "potential:exe:potential-exe"
+
+    - path: "./test"
+      component: "potential:test:potential-test"

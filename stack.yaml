@@ -1,0 +1,5 @@
+packages:
+- .
+resolver: nightly-2021-02-06
+extra-deps:
+  - random-1.2.0@sha256:3337fb944048b49ada7ac70771e9040382da8dcc7058570dd6835af5cc40b822,6094
