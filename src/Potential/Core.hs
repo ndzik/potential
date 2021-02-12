@@ -33,6 +33,9 @@ instance Eq (Children a) where
 
 deriving instance Show a => Show (Children a)
 
+-- Basis describes the basisvectors for a cartesian coordinate system.
+data Basis = X | Y
+
 -- Point describes a point (x,y) on an x-y-plane.
 type Point = (Float, Float)
 
@@ -80,7 +83,42 @@ bottomAnchor n = (x + (w / 2), y + h)
 -- connect connects the given `Node` with the given `Children (Node)` by
 -- returning a list of points describing a path.
 connect :: (Boundable a) => Node a -> Children (Node a) -> Path
-connect source (LeftChild   target) = undefined
-connect source (RightChild  target) = undefined
-connect source (TopChild    target) = undefined
-connect source (BottomChild target) = undefined
+connect source (LeftChild target) =
+  leftAnchor source
+    :  joints (position source) (LeftChild (position target))
+    ++ [rightAnchor target]
+connect source (RightChild target) =
+  rightAnchor source
+    :  joints (position source) (LeftChild (position target))
+    ++ [leftAnchor target]
+connect source (TopChild target) =
+  topAnchor source
+    :  joints (position source) (LeftChild (position target))
+    ++ [bottomAnchor target]
+connect source (BottomChild target) =
+  bottomAnchor source
+    :  joints (position source) (LeftChild (position target))
+    ++ [topAnchor target]
+
+-- joints calculates the joint points needed to draw a `zig-zag` path from a
+-- source `Point` to a target `Children Point`.
+joints :: Point -> Children Point -> Path
+joints p1@(x1, y1) (LeftChild p2@(x2, y2)) = [(newX, y1), (newX, y2)]
+  where newX = new X p1 p2
+joints p1@(x1, y1) (RightChild p2@(x2, y2)) = [(newX, y1), (newX, y2)]
+  where newX = new X p2 p1
+joints p1@(x1, y1) (TopChild p2@(x2, y2)) = [(x1, newY), (x2, newY)]
+  where newY = new Y p2 p1
+joints p1@(x1, y1) (BottomChild p2@(x2, y2)) = [(x1, newY), (x2, newY)]
+  where newY = new Y p1 p2
+
+-- new returns the new Value for the given basis vector in cartesian
+-- standard coordinates.
+new :: Basis -> Point -> Point -> Float
+new X (x1, _ ) (x2, _ ) = dist x1 x2 / 2 + x1
+new Y (_ , y1) (_ , y2) = dist y1 y2 / 2 + y1
+
+-- dist returns the absolute difference between two values. It is assumed that
+-- 'a' >= 'b' holds.
+dist :: Num a => a -> a -> a
+dist a b = abs (a - b)

@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 import           Control.Monad
+import           Control.Monad.ST
+import           Data.List.NonEmpty as NE (head, tail)
 import           Data.Functor                   ( (<&>) )
 import           Data.Time.Clock.POSIX
 import           Potential.Core
@@ -8,37 +10,71 @@ import           Potential.Test.Random
 import           System.Random.Stateful
 import           Test.Hspec
 
+-- TODO: Implement error gatherer directive to allow accumulating multiple
+-- failed assertions and display them after the testrunner is done.
+
 main :: IO ()
 main = do
-  rng <- getPOSIXTime <&> round <&> mkStdGen
+  rng <- getPOSIXTime >>= (newIOGenM . mkStdGen) . round
   hspec $ describe "Node" $ do
     context "when laying out children" $ do
-      it "lays them out according to RightChilds" (layoutTestCase rng RightChild)
+      it "lays them out according to RightChilds"
+         (layoutTestCase rng RightChild)
       it "lays them out according to LeftChilds" (layoutTestCase rng LeftChild)
-      it "lays them out according to TopChilds" (layoutTestCase rng TopChild)
-      it "lays them out according to BottomChilds" (layoutTestCase rng BottomChild)
+      it "lays them out according to TopChilds"  (layoutTestCase rng TopChild)
+      it "lays them out according to BottomChilds"
+         (layoutTestCase rng BottomChild)
   hspec $ describe "Connection" $ do
     context "when given a source and target" $ do
       it "correctly chooses the sides of the bounding box" $ do
-        let n = runStateGen_ rng mkRandomNode in connectionTestCase n (LeftChild n)
+        connectionTestCase rng LeftChild
+        connectionTestCase rng RightChild
+        connectionTestCase rng TopChild
+        connectionTestCase rng BottomChild
 
-connectionTestCase :: Node ContentMock -> Children (Node ContentMock) -> IO ()
-connectionTestCase source tgt@(LeftChild target) = connect source tgt `shouldContain` [leftAnchor source, rightAnchor target]
-connectionTestCase source tgt@(RightChild target) = connect source tgt `shouldContain` [rightAnchor source, leftAnchor target]
-connectionTestCase source tgt@(TopChild target) = connect source tgt `shouldContain` [topAnchor source, bottomAnchor target]
-connectionTestCase source tgt@(BottomChild target) = connect source tgt `shouldContain` [bottomAnchor source, topAnchor target]
+connectionTestCase :: StatefulGen g IO => g -> (Node ContentMock -> Children (Node ContentMock)) -> IO ()
+connectionTestCase rng ctor = do
+  source <- mkRandomNode rng
+  target <- mkRandomNode rng
+  let path = connect source (ctor target)
+  isZigZag path `shouldBe` True
+  testAnchor source (ctor target) path
 
-layoutTestCase :: (RandomGen g) => g -> (Node ContentMock -> Children (Node ContentMock)) -> IO ()
+testAnchor :: Node ContentMock -> Children (Node ContentMock) -> Path -> IO ()
+testAnchor source (LeftChild target) path = sequence_ [path `shouldStartWith` [leftAnchor source], path `shouldEndWith` [rightAnchor target]]
+testAnchor source (RightChild target) path = sequence_ [path `shouldStartWith` [rightAnchor source], path `shouldEndWith` [leftAnchor target]]
+testAnchor source (TopChild target) path = sequence_ [path `shouldStartWith` [topAnchor source], path `shouldEndWith` [bottomAnchor target]]
+testAnchor source (BottomChild target) path = sequence_ [path `shouldStartWith` [bottomAnchor source], path `shouldEndWith` [topAnchor target]]
+
+isZigZag :: Path -> Bool
+isZigZag []       = False
+isZigZag (p : ps) = go p ps
+ where
+  go _ [] = True
+  go (x1, y1) (nextPoint@(x2, y2) : rest) =
+    (x1 == x2 || y1 == y2) && go nextPoint rest
+
+layoutTestCase
+  :: (StatefulGen g IO)
+  => g
+  -> (Node ContentMock -> Children (Node ContentMock))
+  -> IO ()
 layoutTestCase rng childCtor = do
-  let (x:xs) = runStateGen_ rng $ mkNRandomNodes 100
-      n = x {children = map LeftChild xs}
+  xs <- mkNRandomNodes 100 rng
+  let x = NE.head xs
+      n = x {children = map LeftChild $ NE.tail xs}
       layedoutChildren = children $ layoutChildren n (testLayoutFn childCtor)
    in mapM_ (`shouldSatisfy` (childCtor n ==)) layedoutChildren
 
-testLayoutFn :: (Boundable a) => (Node a -> Children (Node a)) -> Node a -> Children (Node a) -> Children (Node a)
-testLayoutFn ctor _ (LeftChild n) = ctor n
-testLayoutFn ctor _ (RightChild n) = ctor n
-testLayoutFn ctor _ (TopChild n) = ctor n
+testLayoutFn
+  :: (Boundable a)
+  => (Node a -> Children (Node a))
+  -> Node a
+  -> Children (Node a)
+  -> Children (Node a)
+testLayoutFn ctor _ (LeftChild   n) = ctor n
+testLayoutFn ctor _ (RightChild  n) = ctor n
+testLayoutFn ctor _ (TopChild    n) = ctor n
 testLayoutFn ctor _ (BottomChild n) = ctor n
 
 -- Desired behaviour for connecting nodes is given by a `layout` function

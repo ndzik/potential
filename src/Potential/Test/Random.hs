@@ -1,10 +1,12 @@
 module Potential.Test.Random where
 
+import           Data.List.NonEmpty             ( NonEmpty(..) )
 import           Potential.Core
 import           Potential.Test.Boundable
 import           System.Random.Stateful
 
-mkNRandomNodes :: (StatefulGen g m) => Int -> g -> m [Node ContentMock]
+mkNRandomNodes
+  :: (StatefulGen g m) => Int -> g -> m (NonEmpty (Node ContentMock))
 mkNRandomNodes n rng = go rng n []
  where
   go
@@ -12,8 +14,8 @@ mkNRandomNodes n rng = go rng n []
     => g
     -> Int
     -> [Node ContentMock]
-    -> m [Node ContentMock]
-  go g 0 ns = mkRandomNode g >>= (\n -> pure $ n : ns)
+    -> m (NonEmpty (Node ContentMock))
+  go g 0 ns = mkRandomNode g >>= (\n -> pure $ n :| ns)
   go g i ns = mkRandomNode g >>= (\n -> go g (i - 1) (n : ns))
 
 mkRandomNode :: (StatefulGen g m) => g -> m (Node ContentMock)
