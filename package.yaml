@@ -39,8 +39,8 @@ executables:
     dependencies:
     - potential
     - vty
-    - brick
     - time
+    - mtl
 
 tests:
   potential-test:
