@@ -33,7 +33,7 @@ main = do
         connectionTestCase rng TopChild
         connectionTestCase rng BottomChild
 
-connectionTestCase :: StatefulGen g IO => g -> (Node ContentMock -> Children (Node ContentMock)) -> IO ()
+connectionTestCase :: StatefulGen g IO => g -> (Node ContentMock -> Child (Node ContentMock)) -> IO ()
 connectionTestCase rng ctor = do
   source <- mkRandomNode rng
   target <- mkRandomNode rng
@@ -41,7 +41,7 @@ connectionTestCase rng ctor = do
   isZigZag path `shouldBe` True
   testAnchor source (ctor target) path
 
-testAnchor :: Node ContentMock -> Children (Node ContentMock) -> Path -> IO ()
+testAnchor :: Node ContentMock -> Child (Node ContentMock) -> Path -> IO ()
 testAnchor source (LeftChild target) path = sequence_
   [ toList path `shouldStartWith` [leftAnchor source]
   , toList path `shouldEndWith` [rightAnchor target]
@@ -66,11 +66,7 @@ isZigZag ps = go (NE.head ps) (NE.tail ps)
   go (x1, y1) (nextPoint@(x2, y2) : rest) =
     (x1 == x2 || y1 == y2) && go nextPoint rest
 
-layoutTestCase
-  :: (StatefulGen g IO)
-  => g
-  -> (Node ContentMock -> Children (Node ContentMock))
-  -> IO ()
+layoutTestCase :: (StatefulGen g IO) => g -> (Node ContentMock -> Child (Node ContentMock)) -> IO ()
 layoutTestCase rng childCtor = do
   xs <- mkNRandomNodes 100 rng
   let x = NE.head xs
@@ -78,12 +74,7 @@ layoutTestCase rng childCtor = do
       layedoutChildren = children $ layoutChildren n (testLayoutFn childCtor)
    in mapM_ (`shouldSatisfy` (childCtor n ==)) layedoutChildren
 
-testLayoutFn
-  :: (Boundable a)
-  => (Node a -> Children (Node a))
-  -> Node a
-  -> Children (Node a)
-  -> Children (Node a)
+testLayoutFn :: (Boundable a) => (Node a -> Child (Node a)) -> Node a -> Child (Node a) -> Child (Node a)
 testLayoutFn ctor _ (LeftChild   n) = ctor n
 testLayoutFn ctor _ (RightChild  n) = ctor n
 testLayoutFn ctor _ (TopChild    n) = ctor n

@@ -19,21 +19,21 @@ data Bounds = Bounds Float Float
 data Node a where
   Node ::(Boundable a) => { content :: a
                           , position :: Point
-                          , children :: [Children (Node a)]
+                          , children :: [Child (Node a)]
                           } -> Node a
 
 deriving instance Show a => Show (Node a)
 
-data Children a = LeftChild a | RightChild a | TopChild a | BottomChild a
+data Child a = LeftChild a | RightChild a | TopChild a | BottomChild a
 
-instance Eq (Children a) where
+instance Eq (Child a) where
   (LeftChild   _) == (LeftChild   _) = True
   (RightChild  _) == (RightChild  _) = True
   (TopChild    _) == (TopChild    _) = True
   (BottomChild _) == (BottomChild _) = True
   _               == _               = False
 
-deriving instance Show a => Show (Children a)
+deriving instance Show a => Show (Child a)
 
 -- Basis describes the basisvectors for a cartesian coordinate system.
 data Basis = X | Y
@@ -45,8 +45,8 @@ type Point = (Float, Float)
 type Path = NonEmpty Point
 
 -- Layout describes a layout function: Given the source `Node` and a target
--- `Children` containing a `Node`, return the type of `Children` the target is.
-type Layout a = Node a -> Children (Node a) -> Children (Node a)
+-- `Child` containing a `Node`, return the type of `Child` the target is.
+type Layout a = Node a -> Child (Node a) -> Child (Node a)
 
 -- layoutChildren lays out the children of the given Node by applying the given
 -- `Layout` algorithm to each of them and returns them in an updated Node.
@@ -82,7 +82,7 @@ bottomAnchor n = (x + (w / 2), y + h)
   (Bounds w h) = boundsOf . content $ n
   (x, y)       = position n
 
--- connect connects the given `Node` with the given `Children (Node)` by
+-- connect connects the given `Node` with the given `Child (Node)` by
 -- returning a list of points describing a path.
 connect :: (Boundable a) => Node a -> Child (Node a) -> Path
 connect source (LeftChild target) = foldr1 (<>) [leftAnchor source :| []
