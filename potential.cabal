@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Potential.Core
+      Potential.Layout
       Potential.Test.Boundable
       Potential.Test.Random
   other-modules:

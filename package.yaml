@@ -40,6 +40,7 @@ executables:
     - potential
     - vty
     - brick
+    - time
 
 tests:
   potential-test:

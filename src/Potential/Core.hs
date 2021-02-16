@@ -1,4 +1,6 @@
-{-# LANGUAGE GADTs, StandaloneDeriving #-}
+{-# LANGUAGE GADTs              #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Potential.Core where
 
 import           Data.List.NonEmpty as NE (NonEmpty (..))
@@ -12,7 +14,7 @@ class Boundable a where
 
 -- Bounds describe the `width` and `height` one can use to calculate a bounding
 -- box from.
-data Bounds = Bounds Float Float
+data Bounds = Bounds Float Float deriving (Show)
 
 -- Node describes a node containing `Boundable a`, the current position and a
 -- list of childnodes.
@@ -120,3 +122,10 @@ new Y (_ , y1) (_ , y2) = dist y1 y2 / 2 + y1
 -- 'a' >= 'b' holds.
 dist :: Num a => a -> a -> a
 dist a b = abs (a - b)
+
+-- FIXME: Bad design.
+contentOf :: Child a -> a
+contentOf (LeftChild a)   = a
+contentOf (RightChild a)  = a
+contentOf (TopChild a)    = a
+contentOf (BottomChild a) = a
