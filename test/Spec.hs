@@ -1,8 +1,9 @@
-{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
 import           Control.Monad
 import           Control.Monad.ST
-import           Data.List.NonEmpty as NE (head, tail)
-import           Data.Functor                   ( (<&>) )
+import           Data.Functor             ((<&>))
+import           Data.List.NonEmpty       as NE (head, tail, toList)
 import           Data.Time.Clock.POSIX
 import           Potential.Core
 import           Potential.Test.Boundable
@@ -41,14 +42,25 @@ connectionTestCase rng ctor = do
   testAnchor source (ctor target) path
 
 testAnchor :: Node ContentMock -> Children (Node ContentMock) -> Path -> IO ()
-testAnchor source (LeftChild target) path = sequence_ [path `shouldStartWith` [leftAnchor source], path `shouldEndWith` [rightAnchor target]]
-testAnchor source (RightChild target) path = sequence_ [path `shouldStartWith` [rightAnchor source], path `shouldEndWith` [leftAnchor target]]
-testAnchor source (TopChild target) path = sequence_ [path `shouldStartWith` [topAnchor source], path `shouldEndWith` [bottomAnchor target]]
-testAnchor source (BottomChild target) path = sequence_ [path `shouldStartWith` [bottomAnchor source], path `shouldEndWith` [topAnchor target]]
+testAnchor source (LeftChild target) path = sequence_
+  [ toList path `shouldStartWith` [leftAnchor source]
+  , toList path `shouldEndWith` [rightAnchor target]
+  ]
+testAnchor source (RightChild target) path = sequence_
+  [ toList path `shouldStartWith` [rightAnchor source]
+  , toList path `shouldEndWith` [leftAnchor target]
+  ]
+testAnchor source (TopChild target) path = sequence_
+  [ toList path `shouldStartWith` [topAnchor source]
+  , toList path `shouldEndWith` [bottomAnchor target]
+  ]
+testAnchor source (BottomChild target) path = sequence_
+  [ toList path `shouldStartWith` [bottomAnchor source]
+  , toList path `shouldEndWith` [topAnchor target]
+  ]
 
 isZigZag :: Path -> Bool
-isZigZag []       = False
-isZigZag (p : ps) = go p ps
+isZigZag ps = go (NE.head ps) (NE.tail ps)
  where
   go _ [] = True
   go (x1, y1) (nextPoint@(x2, y2) : rest) =
@@ -62,7 +74,7 @@ layoutTestCase
 layoutTestCase rng childCtor = do
   xs <- mkNRandomNodes 100 rng
   let x = NE.head xs
-      n = x {children = map LeftChild $ NE.tail xs}
+      n = x { children = map LeftChild (NE.tail xs) }
       layedoutChildren = children $ layoutChildren n (testLayoutFn childCtor)
    in mapM_ (`shouldSatisfy` (childCtor n ==)) layedoutChildren
 

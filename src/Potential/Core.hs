@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs, StandaloneDeriving #-}
 module Potential.Core where
 
+import           Data.List.NonEmpty as NE (NonEmpty (..))
+
 -- potential is a view agnostic graphical notebook.
 
 -- Boundable describes a boundable type `t`, meaning that width and height can
@@ -40,7 +42,7 @@ data Basis = X | Y
 type Point = (Float, Float)
 
 -- Path is a list of points.
-type Path = [Point]
+type Path = NonEmpty Point
 
 -- Layout describes a layout function: Given the source `Node` and a target
 -- `Children` containing a `Node`, return the type of `Children` the target is.
@@ -82,34 +84,30 @@ bottomAnchor n = (x + (w / 2), y + h)
 
 -- connect connects the given `Node` with the given `Children (Node)` by
 -- returning a list of points describing a path.
-connect :: (Boundable a) => Node a -> Children (Node a) -> Path
-connect source (LeftChild target) =
-  leftAnchor source
-    :  joints (position source) (LeftChild (position target))
-    ++ [rightAnchor target]
-connect source (RightChild target) =
-  rightAnchor source
-    :  joints (position source) (LeftChild (position target))
-    ++ [leftAnchor target]
-connect source (TopChild target) =
-  topAnchor source
-    :  joints (position source) (LeftChild (position target))
-    ++ [bottomAnchor target]
-connect source (BottomChild target) =
-  bottomAnchor source
-    :  joints (position source) (LeftChild (position target))
-    ++ [topAnchor target]
+connect :: (Boundable a) => Node a -> Child (Node a) -> Path
+connect source (LeftChild target) = foldr1 (<>) [leftAnchor source :| []
+                                                , joints (position source) (LeftChild (position target))
+                                                , rightAnchor target :| []]
+connect source (RightChild target) = foldr1 (<>) [rightAnchor source :| []
+                                                 , joints (position source) (LeftChild (position target))
+                                                 , leftAnchor target :| []]
+connect source (TopChild target) = foldr1 (<>) [topAnchor source :| []
+                                               , joints (position source) (LeftChild (position target))
+                                               , bottomAnchor target :| []]
+connect source (BottomChild target) = foldr1 (<>) [bottomAnchor source :| []
+                                                  , joints (position source) (LeftChild (position target))
+                                                  , topAnchor target :| []]
 
 -- joints calculates the joint points needed to draw a `zig-zag` path from a
--- source `Point` to a target `Children Point`.
-joints :: Point -> Children Point -> Path
-joints p1@(x1, y1) (LeftChild p2@(x2, y2)) = [(newX, y1), (newX, y2)]
+-- source `Point` to a target `Child Point`.
+joints :: Point -> Child Point -> Path
+joints p1@(x1, y1) (LeftChild p2@(x2, y2)) = (newX, y1) :| [(newX, y2)]
   where newX = new X p1 p2
-joints p1@(x1, y1) (RightChild p2@(x2, y2)) = [(newX, y1), (newX, y2)]
+joints p1@(x1, y1) (RightChild p2@(x2, y2)) = (newX, y1) :| [(newX, y2)]
   where newX = new X p2 p1
-joints p1@(x1, y1) (TopChild p2@(x2, y2)) = [(x1, newY), (x2, newY)]
+joints p1@(x1, y1) (TopChild p2@(x2, y2)) = (x1, newY) :| [(x2, newY)]
   where newY = new Y p2 p1
-joints p1@(x1, y1) (BottomChild p2@(x2, y2)) = [(x1, newY), (x2, newY)]
+joints p1@(x1, y1) (BottomChild p2@(x2, y2)) = (x1, newY) :| [(x2, newY)]
   where newY = new Y p1 p2
 
 -- new returns the new Value for the given basis vector in cartesian
