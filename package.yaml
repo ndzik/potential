@@ -41,6 +41,7 @@ executables:
     - vty
     - time
     - mtl
+    - fmt
 
 tests:
   potential-test:
