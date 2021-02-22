@@ -3,7 +3,8 @@
 import           Control.Monad
 import           Control.Monad.ST
 import           Data.Functor             ((<&>))
-import           Data.List.NonEmpty       as NE (head, tail, toList)
+import           Data.List.NonEmpty       as NE (NonEmpty (..), head, tail,
+                                                 toList)
 import           Data.Time.Clock.POSIX
 import           Potential.Core
 import           Potential.Layout
@@ -77,7 +78,7 @@ testAnchor source (BottomChild target) path = sequence_
   ]
 
 isZigZag :: Path -> Bool
-isZigZag ps = go (NE.head ps) (NE.tail ps)
+isZigZag (p :| ps) = go p ps
  where
   go _ [] = True
   go (x1, y1) (nextPoint@(x2, y2) : rest) =
